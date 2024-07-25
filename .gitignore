@@ -1,0 +1,11 @@
+plots
+loss_logs
+long_clip
+GeoVQA-dataset
+checkpoints
+datasets
+plot_mean_similarity.py
+plot_truncate_similarity.py
+truncated_text_similarity.py
+pkl_to_xlsx.py
+original_caption_ranking.py
