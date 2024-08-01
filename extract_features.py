@@ -1,22 +1,21 @@
 import torch
+import torchvision.datasets.fgvc_aircraft
 from PIL import Image
 import pandas as pd
-from lavis.models import load_model_and_preprocess
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pickle
 import models
+device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
-if __name__ == '__main__':
-    # load model
-    device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
-    model = models.LongCLIP(device)
-    model.load_model()
-    output = {'image_path': [], 'text': [],  'image_features': [], 'text_features': [], 'text_length': [], 'width': [], 'height': []}
-    df = pd.read_excel('dataset/geoVQA.xlsx')
-    summarized = pd.read_excel('dataset/summarized_text.xlsx')
+def extract_features_geo(model, dataset='dataset/geoVQA.xlsx'):
+    output = {'image_path': [], 'text': [], 'image_features': [], 'text_features': [], 'text_length': [], 'width': [],
+              'height': []}
+    df = pd.read_excel(dataset)
 
     for i, row in tqdm(df.iterrows(), total=len(df)):
-        image = Image.open(row['image'])
+        path = row['image']
+        image = Image.open(path)
         width, height = image.size
         caption = row['gt_text']
         with torch.no_grad():
@@ -31,18 +30,35 @@ if __name__ == '__main__':
         output['image_path'].append(row['image'])
         output['text'].append(caption)
 
-    # output_dict = {}
-    # for column in summarized.columns:
-    #     output_dict[column] = []
-    #
-    # for i, row in tqdm(summarized.iterrows(), total=len(summarized['max_len 50'])):
-    #     for column in list(summarized.columns):
-    #         with torch.no_grad():
-    #             if isinstance(row[column], str):
-    #                 text_feature = model.language_embedding(row[column])
-    #                 output_dict[column].append(text_feature)
-    #             else:
-    #                 output_dict[column].append('')
-
-    with open('GeoVQA-dataset/embeddings/summarize_long_embeddings.pkl', 'wb') as f:
+    with open('dataset/embeddings/clip_embeddings.pkl', 'wb') as f:
         pickle.dump(output, f)
+
+
+def extract_features_torchvision(model, data, save_path):
+    output = {'image_features': [], 'label': [],}
+    for image, label in tqdm(data):
+        output['label'].append(label)
+        image = model.vision_preprocess(image).unsqueeze(0).to(device)
+        image_feature = model.backbone.encode_image(image)
+        features = image_feature.detach().cpu()
+        output['image_features'].append(features)
+
+    df = pd.DataFrame(output)
+    with open(save_path, 'wb') as f:
+        pickle.dump(output, f)
+
+
+if __name__ == '__main__':
+    model = models.CLIP(device)
+    model.load_model()
+    data = torchvision.datasets.stanford_cars.StanfordCars(
+        root='datasets-torchvis/stanford_cars',
+        split='test',
+        )
+
+    extract_features_torchvision(model, data, 'datasets-torchvis/embeddings/cars_test.pkl')
+
+
+
+
+

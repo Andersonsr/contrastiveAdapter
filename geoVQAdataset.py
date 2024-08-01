@@ -1,3 +1,4 @@
+import os.path
 import pickle
 import pandas as pd
 import numpy as np
@@ -6,13 +7,19 @@ from torch.utils.data import Dataset
 
 
 class GeoVQADataset(Dataset):
-    def __init__(self, file_path, device, text_column='max_len 50'):
+    def __init__(self, file_path):
         self.images = []
         self.texts = []
-        self.device = device
+        assert os.path.exists(file_path), f"File {file_path} not found"
 
         with open(file_path, 'rb') as f:
             data = pickle.load(f)
+
+        assert 'image_features' in data.keys(), "Missing 'image_features'"
+        assert 'text_features' in data.keys(), "Missing 'text_features'"
+        assert len(data['image_features']) == len(data['text_features']), "image_features and text_features must have the same length"
+        assert len(data['image_features']) > 0, "image_features is empty"
+        assert len(data['text_features']) > 0, "text_features is empty"
 
         for i in range(len(data['image_features'])):
             img = data['image_features'][i]
@@ -28,8 +35,13 @@ class GeoVQADataset(Dataset):
                 self.images.append(img[0, :])
                 self.texts.append(txt[0, :])
 
+            elif len(data['image_features'][i].shape) == 1:
+                # resized embeddings
+                self.images.append(img)
+                self.texts.append(txt)
+
     def __getitem__(self, index):
-        return self.images[index].to(self.device, torch.float32),  self.texts[index].to(self.device, torch.float32)
+        return self.images[index],  self.texts[index]
 
     def __len__(self):
         return len(self.images)
@@ -42,21 +54,13 @@ class GeoVQADataset(Dataset):
             np.random.shuffle(indices)
 
         split = int(size * train_ratio)
-        train_sampler = torch.utils.data.SubsetRandomSampler(indices[:split])
-        test_sampler = torch.utils.data.SubsetRandomSampler(indices[split:])
+        train_indices = indices[:split]
+        test_indices = indices[split:]
+
+        train_sampler = torch.utils.data.SubsetRandomSampler(train_indices)
+        test_sampler = torch.utils.data.SubsetRandomSampler(test_indices)
         train_loader = torch.utils.data.DataLoader(self, batch_size=batch_size, sampler=train_sampler)
         test_loader = torch.utils.data.DataLoader(self, batch_size=batch_size, sampler=test_sampler)
-        return train_loader, test_loader
-
-
-if __name__ == '__main__':
-    device = torch.device('cuda' if torch.cuda.is_available() else '')
-    dataset = GeoVQADataset(['dataset/embeddings/embeddings_longclip.pkl',
-                            'dataset/embeddings/summarize_long_embeddings.pkl'], device)
-    train_loader, test_loader = dataset.get_loaders()
-    print(len(dataset))
-    train_features, train_labels = next(iter(train_loader))
-    print(f"Feature batch shape: {train_features.size()}")
-    print(f"Texts batch shape: {train_labels.size()}")
+        return train_loader, test_loader, train_indices, test_indices
 
 

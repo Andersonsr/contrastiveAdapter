@@ -3,8 +3,8 @@ import torch
 from lavis.models import load_model_and_preprocess
 from PIL import Image
 from abc import ABC, abstractmethod
+import clip
 from long_clip.model import longclip
-from adapters import ContrastiveAdapter
 
 
 class Model(ABC):
@@ -43,10 +43,10 @@ class Blip2(Model):
     def visual_embedding(self, image_path):
         image = Image.open(image_path).convert("RGB")
         image = self.vision_preprocess["eval"](image).unsqueeze(0).to(self.device)
-        return self.backbone.resize_features({'image': image}, mode='image').image_embeds
+        return self.backbone.extract_features({'image': image}, mode='image').image_embeds
 
     def language_embedding(self, text):
-        return self.backbone.resize_features({'text_input': [text]}, mode='text').text_embeds
+        return self.backbone.extract_features({'text_input': [text]}, mode='text').text_embeds
 
     def similarity(self, text_features, image_features):
         image_features /= image_features.norm(dim=-1, keepdim=True)
@@ -58,6 +58,22 @@ class Blip2ITM(Blip2):
     def load_model(self):
         self.backbone, self.vision_preprocess, self.language_preprocess = load_model_and_preprocess(
             "blip2_image_text_matching", "pretrain", device=self.device, is_eval=True)
+
+
+class CLIP(Model):
+    def load_model(self):
+        self.backbone, self.vision_preprocess = clip.load("ViT-L/14", device=self.device)
+        self.language_preprocess = clip.tokenize
+
+    def visual_embedding(self, image_path):
+        with torch.no_grad():
+            image = self.vision_preprocess(Image.open(image_path)).unsqueeze(0).to(self.device)
+            return self.backbone.encode_image(image)
+
+    def language_embedding(self, text):
+        with torch.no_grad():
+            text = clip.tokenize(text, context_length=77, truncate=True).to(self.device)
+            return self.backbone.encode_text(text)
 
 
 class OpenCoCa(Model):
@@ -82,8 +98,8 @@ class OpenCoCa(Model):
 
 class LongCLIP(Model):
     def load_model(self):
-        self.backbone, self.vision_preprocess = longclip.load("./long_clip/checkpoints/longclip-L.pt", device=self.device)
-        self.language_preprocess = ""
+        self.backbone, self.vision_preprocess = longclip.load(
+            "./long_clip/checkpoints/longclip-L.pt", device=self.device)
 
     def visual_embedding(self, image_path):
         image = self.vision_preprocess(Image.open(image_path)).unsqueeze(0).to(self.device)
