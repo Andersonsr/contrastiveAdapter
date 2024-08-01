@@ -11,6 +11,7 @@ from cars_categories import names
 import pandas as pd
 from contrastiveAdapter import ContrastiveAdapter
 from singleAdapter import SingleAdapter
+from early_stopper import EarlyStopper
 device = torch.device("cuda" if torch.cuda.is_available() else "")
 
 
@@ -75,14 +76,14 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output_dim', type=int, default=768, help='output embedding dimension')
     parser.add_argument('-k', '--k_shots', type=int, default=0, help='number of shots')
     parser.add_argument('-a', '--alpha', type=float, default=1.0,
-                        help='[0,1] weight for new information on residual block, when out_dim = in_dim')
+                        help='[0,1] learned features proportion, when out_dim = in_dim')
     parser.add_argument('--data_path', type=str, default='datasets-torchvis/embeddings/aircraft_train.pkl',
                         help='path to embedding dataset')
     parser.add_argument('--dataset', type=str, default='aircraft', choices=['aircraft', 'flowers', 'cars'],
                         help='dataset alias when using supervised learning')
     parser.add_argument('--checkpoint_path', type=str, default='checkpoints/experiment.pt',
                         help='path to save checkpoint')
-    parser.add_argument('--loss_log', type=str, default='loss_logs/test.csv', help='path to save loss log')
+    parser.add_argument('--loss_log', type=str, default='loss_logs/test.csv', help='path to save losses')
     parser.add_argument('--learning_objective', type=str, default='supervised',
                         choices=['contrastive', 'supervised'], help='type of learning objective')
     parser.add_argument('--identifier', type=str, default='experiment', help='experiment identifier')
@@ -118,6 +119,8 @@ if __name__ == '__main__':
     validation_accuracies = []
 
     optim = Adam(model.parameters(), lr=args.lr)
+    stopper = EarlyStopper(patience=5, minimal_improvement=0.01, objective='minimize', save_option='last')
+
     for i in tqdm(range(1, args.epochs)):
         training_loss, training_acc = model.train_epoch(train_loader, optim)
         validation_loss, validation_acc = model.val_epoch(val_loader)
@@ -126,17 +129,16 @@ if __name__ == '__main__':
         validation_losses.append(validation_loss)
 
         if validation_acc is not None:
-            # supervised model
             training_accuracies.append(training_acc)
             validation_accuracies.append(validation_acc)
 
-    torch.save({
-        'epoch': args.epochs,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optim.state_dict(),
-        'loss': training_losses[-1],
-    },
-        args.checkpoint_path)
+        model_dict = {'epoch': args.epochs, 'model_state_dict': model.state_dict(),
+                      'optimizer_state_dict': optim.state_dict(),
+                      'loss': training_losses[-1]}
+
+        if not stopper.continue_training(training_loss, model_dict):
+            torch.save(stopper.model_to_save(), args.checkpoint_path)
+            break
 
     loss_log = {'val_loss': validation_losses, 'training_loss': training_losses}
     df = pd.DataFrame.from_dict(loss_log)
