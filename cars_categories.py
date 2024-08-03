@@ -196,3 +196,7 @@ names = [
     'Volvo XC90 SUV 2007',
     'smart fortwo Convertible 2012',
 ]
+
+if __name__ == '__main__':
+    print(names)
+

@@ -31,13 +31,14 @@ class EarlyStopper:
         if self.improved(score):
             self.best_score = score
             self.best_model = model
+            self.last_model = model
             self.counter = 0
             return True
 
         else:
             self.counter += 1
+            self.last_model = model
             if self.counter > self.patience:
-                self.last_model = model
                 return False
 
             return True

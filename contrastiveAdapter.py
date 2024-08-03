@@ -34,6 +34,9 @@ class ContrastiveAdapter(BaseAdapter):
 
         return contrastive_loss, None
 
+    def predict(self, batch):
+        pass
+
     def image_projection(self, embeddings):
         self.eval()
         return self.imageAdapter(embeddings)

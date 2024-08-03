@@ -31,29 +31,30 @@ class BaseAdapter(nn.Module):
     def train_epoch(self, train_loader, optim):
         self.train()
         epoch_losses = []
-        epoch_accuracies = []
 
         for batch in train_loader:
             optim.zero_grad()
-            batch_loss, batch_acc = self.forward(batch)
+            batch_loss = self.forward(batch)
             batch_loss.backward()
             optim.step()
             epoch_losses.append(batch_loss.detach().cpu())
-            if batch_acc is not None:
-                epoch_accuracies.append(batch_acc.detach().cpu())
-        acc = np.mean(epoch_accuracies) if len(epoch_accuracies) > 0 else None
-        return np.mean(epoch_losses), acc
+        return np.mean(epoch_losses)
 
     def val_epoch(self, val_loader):
         self.eval()
         epoch_losses = []
-        epoch_accuracies = []
 
         for batch in val_loader:
-            batch_loss, batch_acc = self.forward(batch)
+            batch_loss = self.forward(batch)
             epoch_losses.append(batch_loss.detach().item())
-            if batch_acc is not None:
-                epoch_accuracies.append(batch_acc.detach().cpu())
 
-        acc = np.mean(epoch_accuracies) if len(epoch_accuracies) > 0 else None
-        return np.mean(epoch_losses), acc
+        return np.mean(epoch_losses)
+
+    def predict(self, batch):
+        print('override me')
+        pass
+
+    def forward(self, batch):
+        print('override me')
+        pass
+

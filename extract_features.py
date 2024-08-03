@@ -8,6 +8,7 @@ import pickle
 import models
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
+
 def extract_features_geo(model, dataset='dataset/geoVQA.xlsx'):
     output = {'image_path': [], 'text': [], 'image_features': [], 'text_features': [], 'text_length': [], 'width': [],
               'height': []}
