@@ -41,9 +41,9 @@ def get_labels(dataset_name):
         return names
 
 
-def encode_texts(texts):
+def encode_texts(texts, model='ViT-L/14'):
     texts = torch.cat([clip.tokenize(text) for text in texts]).to(device)
-    clip_backbone, _ = clip.load("ViT-L/14")
+    clip_backbone, _ = clip.load(model)
     with torch.no_grad():
         texts = clip_backbone.encode_text(texts).to(torch.float32)
     return texts
@@ -53,15 +53,8 @@ def plot_curves(training, validation, output_name, type):
     plt.plot(training, label=f'training {type}')
     plt.plot(validation, label=f'validation {type}')
 
-    if type == 'loss':
-        min_loss = np.argmin(validation)
-        plt.text(min_loss, training[min_loss], f'{training[min_loss]:.3}')
-        plt.text(min_loss, validation[min_loss], f'{validation[min_loss]:.3}')
-
-    elif type == 'accuracy':
-        max_acc = np.argmax(validation)
-        plt.text(max_acc, training[max_acc], f'{training[max_acc]:.3}')
-        plt.text(max_acc, validation[max_acc], f'{validation[max_acc]:.3}')
+    plt.text(len(training), training[-1], f'{training[-1]:.3}')
+    plt.text(len(validation), validation[-1], f'{validation[-1]:.3}')
 
     plt.title(f'{type} curves {output_name}')
     plt.legend()

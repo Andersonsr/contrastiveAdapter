@@ -6,11 +6,13 @@ from projectionMLP import BaseAdapter, ProjectionMLP
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-class SingleAdapter(BaseAdapter):
-    def __init__(self, in_dim, out_dim, alpha, text_embeddings, initial_logit_scale):
-        super(SingleAdapter, self).__init__()
-        self.imageAdapter = ProjectionMLP(in_dim, out_dim, alpha)
+class DualAdapter(BaseAdapter):
+    def __init__(self, in_dim, out_dim, text_embeddings, initial_logit_scale):
+        super(DualAdapter, self).__init__()
+        self.imageAdapter = ProjectionMLP(in_dim, out_dim, 1)
         self.imageAdapter.to(device)
+        self.textAdapter = ProjectionMLP(in_dim, out_dim, 1)
+        self.textAdapter.to(device)
         self.text_embeddings = text_embeddings
         self.logit_scale = nn.Parameter(torch.ones([]) * initial_logit_scale)
 
@@ -20,8 +22,9 @@ class SingleAdapter(BaseAdapter):
 
         images_embeddings = self.imageAdapter(images_embeddings)
         images_embeddings = images_embeddings / images_embeddings.norm(dim=1, keepdim=True)
-        text_embeddings = self.text_embeddings / self.text_embeddings.norm(dim=1, keepdim=True)
-        logits = (images_embeddings @ text_embeddings.T) * self.logit_scale.exp()
+        text_embeddings_resized = self.textAdapter(self.text_embeddings)
+        text_embeddings_resized = text_embeddings_resized / text_embeddings_resized.norm(dim=1, keepdim=True)
+        logits = (images_embeddings @ text_embeddings_resized.T) * self.logit_scale.exp()
         loss = nn.CrossEntropyLoss()(logits, labels)
         return loss
 
@@ -29,7 +32,8 @@ class SingleAdapter(BaseAdapter):
         images_embeddings = batch[0].to(device, torch.float32)
         images_embeddings = self.imageAdapter(images_embeddings)
         images_embeddings = images_embeddings / images_embeddings.norm(dim=1, keepdim=True)
-        text_embeddings = self.text_embeddings / self.text_embeddings.norm(dim=1, keepdim=True)
-        logits = (images_embeddings @ text_embeddings.T) * self.logit_scale.exp()
+        text_embeddings_resized = self.textAdapter(self.text_embeddings)
+        text_embeddings_resized = text_embeddings_resized / text_embeddings_resized.norm(dim=1, keepdim=True)
+        logits = (images_embeddings @ text_embeddings_resized.T) * self.logit_scale.exp()
         return logits.softmax(dim=1).argmax(dim=1)
 

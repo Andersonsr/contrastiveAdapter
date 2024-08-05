@@ -15,6 +15,7 @@ class EarlyStopper:
         self.minimal_improvement = minimal_improvement
         self.last_model = None
         self.save_option = save_option
+        self.stop = False
 
     def improved(self, score):
         if self.best_score is None:
@@ -27,21 +28,23 @@ class EarlyStopper:
         else:
             return score - self.best_score > self.minimal_improvement
 
-    def continue_training(self, score, model):
-        if self.improved(score):
+    def update(self, score, model):
+        self.last_model = model
+        if self.best_score is None:
             self.best_score = score
             self.best_model = model
-            self.last_model = model
+
+        elif self.improved(score):
+            self.best_score = score
+            self.best_model = model
             self.counter = 0
-            return True
+            # print(f'EarlyStopper: new best score: {score}')
 
         else:
             self.counter += 1
-            self.last_model = model
             if self.counter > self.patience:
-                return False
-
-            return True
+                self.stop = True
+            # print(f'EarlyStopper: counter increased {self.counter}')
 
     def model_to_save(self):
         if self.save_option == "best":
