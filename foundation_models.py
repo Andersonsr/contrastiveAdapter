@@ -61,8 +61,8 @@ class Blip2ITM(Blip2):
 
 
 class CLIP(Model):
-    def load_model(self):
-        self.backbone, self.vision_preprocess = clip.load("ViT-L/14", device=self.device)
+    def load_model(self, encoder='ViT-L/14'):
+        self.backbone, self.vision_preprocess = clip.load(encoder, device=self.device)
         self.language_preprocess = clip.tokenize
 
     def visual_embedding(self, image_path):
@@ -109,5 +109,6 @@ class LongCLIP(Model):
     def language_embedding(self, text):
         with torch.no_grad():
             return self.backbone.encode_text(longclip.tokenize(text).to(self.device))
+
 
 

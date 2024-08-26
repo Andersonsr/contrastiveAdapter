@@ -29,19 +29,19 @@ CUSTOM_TEMPLATES = {
 
 def get_labels(dataset_name):
     if dataset_name == 'aircraft':
-        with open('datasets-torchvis/fgvc_aircraft/fgvc-aircraft-2013b/data/variants.txt') as f:
+        with open('datasets_torchvision/fgvc_aircraft/fgvc-aircraft-2013b/data/variants.txt') as f:
             lines = f.readlines()
             return [line.strip() for line in lines]
 
     if dataset_name == 'flowers':
-        data = pd.read_csv('datasets-torchvis/flowers102/flowers-102/oxford_flower_102_name.csv')
+        data = pd.read_csv('datasets_torchvision/flowers102/flowers-102/oxford_flower_102_name.csv')
         return data['Name'].tolist()
 
     if dataset_name == 'cars':
         return names
 
 
-def encode_texts(texts, model='ViT-L/14'):
+def encode_texts(texts, model='RN50'):
     texts = torch.cat([clip.tokenize(text) for text in texts]).to(device)
     clip_backbone, _ = clip.load(model)
     with torch.no_grad():
@@ -58,5 +58,5 @@ def plot_curves(training, validation, output_name, type):
 
     plt.title(f'{type} curves {output_name}')
     plt.legend()
-    plt.savefig(f'{output_name}.png')
+    plt.savefig(f'plots/experiment training/{output_name}.png')
     plt.clf()

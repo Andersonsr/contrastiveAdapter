@@ -4,7 +4,7 @@ _objective_choices = Literal["minimize", "maximize"]
 _save_choices = Literal["best", "last"]
 
 
-class EarlyStopper:
+class EarlyStopping:
     def __init__(self, patience: int, minimal_improvement: float, objective: _objective_choices = 'minimize',
                  save_option: _save_choices = 'last'):
         self.patience = patience

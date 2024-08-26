@@ -1,11 +1,14 @@
 import torch
-import torchvision.datasets.fgvc_aircraft
+import torchvision.datasets as dset
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+import torchvision.transforms as transforms
 from PIL import Image
 import pandas as pd
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pickle
-import models
+import foundation_models
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
 
@@ -36,30 +39,49 @@ def extract_features_geo(model, dataset='dataset/geoVQA.xlsx'):
 
 
 def extract_features_torchvision(model, data, save_path):
-    output = {'image_features': [], 'label': [],}
+    output = {'image_features': [], 'labels': [], }
     for image, label in tqdm(data):
-        output['label'].append(label)
+        output['labels'].append(label)
         image = model.vision_preprocess(image).unsqueeze(0).to(device)
         image_feature = model.backbone.encode_image(image)
         features = image_feature.detach().cpu()
         output['image_features'].append(features)
 
-    df = pd.DataFrame(output)
+    with open(save_path, 'wb') as f:
+        pickle.dump(output, f)
+
+
+def extract_features_coco(model, data, save_path):
+    output = {'image_features': [], 'text_features': [], }
+    for image, captions in tqdm(data):
+        image = model.vision_preprocess(image).unsqueeze(0).to(device)
+        image_features = model.backbone.encode_image(image)
+        image_features = image_features.detach().cpu()
+        output['image_features'].append(image_features)
+
+        text_features = model.language_embedding(captions)
+        text_features = text_features.detach().cpu()
+        output['text_features'].append(text_features)
+
     with open(save_path, 'wb') as f:
         pickle.dump(output, f)
 
 
 if __name__ == '__main__':
-    model = models.CLIP(device)
+    model = foundation_models.CLIP(device)
     model.load_model()
-    data = torchvision.datasets.stanford_cars.StanfordCars(
-        root='datasets-torchvis/stanford_cars',
-        split='test',
-        )
+    for split in ['train', 'val']:
+        # data = dset.StanfordCars(root='datasets_torchvision/stanford_cars', split=split)
+        # data = dset.FGVCAircraft(root='datasets_torchvision/fgvc_aircraft/', split=split, annotation_level='variant')
+        # data = dset.Flowers102(root='datasets_torchvision/flowers102', split=split)
 
-    extract_features_torchvision(model, data, 'datasets-torchvis/embeddings/cars_test.pkl')
+        data = dset.CocoCaptions(root=f'datasets_torchvision/coco_2017/{split}2017',
+                                 annFile=f'datasets_torchvision/coco_2017/annotations/captions_{split}2017.json', )
 
+        print(split, len(data))
 
+        print(data[0])
 
+        # extract_features_coco(model, data, f'datasets_torchvision/embeddings/coco_ViTL_{split}.pkl')
 
 

@@ -6,12 +6,36 @@ import torch
 from torch.utils.data import Dataset
 
 
+class CaptionDataset(Dataset):
+    def __init__(self, path, n_captions=5):
+        assert os.path.exists(path), '{} does not exist'.format(path)
+        with open(path, 'rb') as f:
+            data = pickle.load(f)
+            self.captions = data['text_features']
+            self.images = data['image_features']
+            self.n = n_captions
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        return self.images[index], self.captions[index][:self.n]
+
+    def get_loader(self, shuffle=True, batch_size=400):
+        indices = np.arange(len(self.images))
+        if shuffle:
+            np.random.shuffle(indices)
+        sampler = torch.utils.data.SequentialSampler(indices)
+        loader = torch.utils.data.DataLoader(self, batch_size=batch_size, sampler=sampler, shuffle=False)
+        return loader, indices
+
+
 class EmbeddingDataset(Dataset):
     def __init__(self, file_path, k=0):
         self.images = []
         self.labels = []
         assert os.path.exists(file_path), f"File {file_path} not found"
-
+        # file_path = 'datasets_torchvision/embeddings/flowers_ViTL_train.pkl'
         with open(file_path, 'rb') as f:
             data = pickle.load(f)
 
@@ -30,6 +54,7 @@ class EmbeddingDataset(Dataset):
             categories = df['labels'].unique()
             for category in categories:
                 samples = df[df['labels'] == category]
+                samples = samples.sample(frac=1)
                 samples = samples.iloc[:k, :]
 
                 for i, row in samples.iterrows():
