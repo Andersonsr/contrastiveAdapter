@@ -54,12 +54,6 @@ class Blip2(Model):
         return (image_features @ text_features[:, 0, :].T).max()
 
 
-class Blip2ITM(Blip2):
-    def load_model(self):
-        self.backbone, self.vision_preprocess, self.language_preprocess = load_model_and_preprocess(
-            "blip2_image_text_matching", "pretrain", device=self.device, is_eval=True)
-
-
 class CLIP(Model):
     def load_model(self, encoder='ViT-L/14'):
         self.backbone, self.vision_preprocess = clip.load(encoder, device=self.device)
@@ -79,19 +73,40 @@ class CLIP(Model):
 class OpenCoCa(Model):
     def visual_embedding(self, image_path):
         image = Image.open(image_path).convert("RGB")
-        image = self.vision_preprocess(image).unsqueeze(0)
+        image = self.vision_preprocess(image).unsqueeze(0).to(self.device)
         return self.backbone.encode_image(image)
 
     def language_embedding(self, text):
-        text = self.language_preprocess(text, context_length=240)
-        text = text.squeeze()[:76].unsqueeze(0)
-        # print(text)
+        text = self.language_preprocess(text)
+        # print(text.shape, text)
+        text = text[:, :76].to(self.device)
+
         return self.backbone.encode_text(text)
 
     def load_model(self):
         self.backbone, _, self.vision_preprocess = open_clip.create_model_and_transforms(
             model_name="coca_ViT-L-14",
-            pretrained="mscoco_finetuned_laion2B-s13B-b90k"
+            pretrained="mscoco_finetuned_laion2B-s13B-b90k",
+            device=self.device
+        )
+        self.language_preprocess = open_clip.get_tokenizer('ViT-L-14')
+
+
+class OpenCLIP(Model):
+    def visual_embedding(self, image_path):
+        image = Image.open(image_path).convert("RGB")
+        image = self.vision_preprocess(image).unsqueeze(0).to(self.device)
+        return self.backbone.encode_image(image)
+
+    def language_embedding(self, text):
+        text = self.language_preprocess(text)
+        return self.backbone.encode_text(text.to(self.device))
+
+    def load_model(self):
+        self.backbone, _, self.vision_preprocess = open_clip.create_model_and_transforms(
+            model_name="ViT-L-14",
+            pretrained="laion2b_s32b_b82k",
+            device=self.device
         )
         self.language_preprocess = open_clip.get_tokenizer('ViT-L-14')
 

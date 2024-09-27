@@ -5,6 +5,7 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import torchvision.transforms as transforms
 from PIL import Image
 import pandas as pd
+import open_clip
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pickle
@@ -55,6 +56,7 @@ def extract_features_coco(model, data, save_path):
     output = {'image_features': [], 'text_features': [], }
     for image, captions in tqdm(data):
         image = model.vision_preprocess(image).unsqueeze(0).to(device)
+        # print(image.shape, )
         image_features = model.backbone.encode_image(image)
         image_features = image_features.detach().cpu()
         output['image_features'].append(image_features)
@@ -68,8 +70,10 @@ def extract_features_coco(model, data, save_path):
 
 
 if __name__ == '__main__':
-    model = foundation_models.CLIP(device)
+    # print(open_clip.list_pretrained())
+    model = foundation_models.OpenCLIP(device)
     model.load_model()
+
     for split in ['train', 'val']:
         # data = dset.StanfordCars(root='datasets_torchvision/stanford_cars', split=split)
         # data = dset.FGVCAircraft(root='datasets_torchvision/fgvc_aircraft/', split=split, annotation_level='variant')
@@ -78,10 +82,6 @@ if __name__ == '__main__':
         data = dset.CocoCaptions(root=f'datasets_torchvision/coco_2017/{split}2017',
                                  annFile=f'datasets_torchvision/coco_2017/annotations/captions_{split}2017.json', )
 
-        print(split, len(data))
-
-        print(data[0])
-
-        # extract_features_coco(model, data, f'datasets_torchvision/embeddings/coco_ViTL_{split}.pkl')
+        extract_features_coco(model, data, f'datasets_torchvision/embeddings/coco_openCLIP_{split}.pkl')
 
 
