@@ -10,6 +10,10 @@ truncated_text_similarity.py
 scripts.py
 original_caption_ranking.py
 .idea
+mapping.py
+logitNormLoss.py
+geoVQAdataset.py
+clip tokenizer.py
 __pycache__
 cocoapi
 

@@ -23,13 +23,13 @@ class ResidualHead(nn.Module):
 
 
 class ResidualLearnableHead(nn.Module):
-    def __init__(self, in_dim, initial_residual_ratio, trainable_residual_ratio):
+    def __init__(self, in_dim, initial_residual_ratio, trainable_residual_ratio, bottleneck_reduction_ratio=4):
         super(ResidualLearnableHead, self).__init__()
         self.residual = nn.Parameter(torch.ones([]) * initial_residual_ratio, requires_grad=trainable_residual_ratio)
         self.model = nn.Sequential(
-            nn.Linear(in_dim, in_dim // 4),
+            nn.Linear(in_dim, in_dim // bottleneck_reduction_ratio),
             nn.ReLU(),
-            nn.Linear(in_dim // 4, in_dim),
+            nn.Linear(in_dim // bottleneck_reduction_ratio, in_dim),
             nn.ReLU()
         )
 

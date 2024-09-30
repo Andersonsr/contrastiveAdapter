@@ -13,14 +13,12 @@ from early_stopping import EarlyStopping
 device = torch.device("cuda" if torch.cuda.is_available() else "")
 
 
-def adapt_features(initial_logit_scale,
+def adapt_features(model,
                    checkpoint_path='checkpoints/contrastive/clip_residual_MPT.pt',
                    dataset_path='datasets_torchvision/embeddings/coco_ViTL_val.pkl',
                    save_path='datasets_torchvision/embeddings/coco_MPT.pkl',):
 
     assert os.path.exists(checkpoint_path), f'No checkpoint found at {checkpoint_path}'
-    model = SigAdapter(768, 0.2, torch.tensor(-10.0), initial_logit_scale, ).to(device)
-    # model = ContrastiveResidualAdapter(768, alpha, initial_logit_scale, False).to(device)
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
@@ -39,7 +37,7 @@ def adapt_features(initial_logit_scale,
     print('done!')
 
 
-def run_training(identifier, batch_size, dataset, initial_logit_scale, initial_alpha, initial_bias, epochs):
+def run_training(identifier, batch_size, dataset, model, initial_alpha, initial_bias, epochs):
     train_dataset = CaptionDataset(f'datasets_torchvision/embeddings/{dataset}_train.pkl')
     val_dataset = CaptionDataset(f'datasets_torchvision/embeddings/{dataset}_val.pkl')
     train_loader, train_indices = train_dataset.get_loader(shuffle=False, batch_size=batch_size)
@@ -48,8 +46,6 @@ def run_training(identifier, batch_size, dataset, initial_logit_scale, initial_a
     training_losses = []
     validation_losses = []
 
-    model = SigAdapter(768, alpha, torch.tensor(-10.0), initial_logit_scale, ).to(device)
-    # model = ContrastiveResidualAdapter(768, alpha, initial_logit_scale, False).to(device)
     optim = Adam(model.parameters(), lr=0.00001)
 
     print(f'training {identifier}')
@@ -76,16 +72,20 @@ def run_training(identifier, batch_size, dataset, initial_logit_scale, initial_a
 
 
 if __name__ == '__main__':
-    model = foundation_models.OpenCLIP(device)
-    model.load_model()
-    logit_scale = model.backbone.logit_scale
+    foundation = foundation_models.OpenCLIP(device)
+    foundation.load_model()
+    logit_scale = foundation.backbone.logit_scale
     bias = torch.ones([]) * -10.0
-    for batch_size in [400]:
+    for batch_size in [1000, 400, 32]:
         for alpha in [0.3,]:
-            run_training(f'OpenCLIP_sig_adapter_{alpha}_1000', batch_size, 'coco_openCLIP', logit_scale,
+            model = SigAdapter(768, alpha, torch.tensor(-10.0), logit_scale, use_logit_bias=True, multi_positive=True,)
+            model.to(device)
+            # model = ContrastiveResidualAdapter(768, alpha, logit_scale, False, True).to(device)
+
+            run_training(f'OpenCLIP_sig_adapter_{alpha}_{batch_size}_mp', batch_size, 'coco_openCLIP', model,
                          alpha, bias, 200)
-            adapt_features(logit_scale,
-                           checkpoint_path=f'checkpoints/contrastive/OpenCLIP_sig_adapter_{alpha}_1000.pt',
-                           save_path=f'datasets_torchvision/embeddings/OpenCLIP_sig_adapter_{alpha}_1000.pkl',
+            adapt_features(model,
+                           checkpoint_path=f'checkpoints/contrastive/OpenCLIP_sig_adapter_{alpha}_{batch_size}_mp.pt',
+                           save_path=f'datasets_torchvision/embeddings/OpenCLIP_sig_adapter_{alpha}_{batch_size}_mp.pkl',
                            dataset_path=f'datasets_torchvision/embeddings/coco_openCLIP_val.pkl')
 

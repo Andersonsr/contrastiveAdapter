@@ -47,18 +47,24 @@ if __name__ == '__main__':
     model, _ = clip.load('ViT-L/14')
     results = {}
     mode = 'one'
+    ratio = '1/5000' if mode == 'one' else '5/25000'
+    title = f'COCO Retrieval with Open CLIP encoders, {ratio}'
     # result = evaluate_image_text('datasets_torchvision/embeddings/coco_ViTL_val.pkl',
     #                              model.logit_scale, mode=mode)
     # results['CLIP zero shot'] = result.values()
     paths = ['coco_openCLIP_val',
-             'OpenCLIP_residual_adapter_0.3',
-             'OpenCLIP_sig_adapter_0.4_nobias',
-             'OpenCLIP_sig_adapter_0.3',]
+             # 'OpenCLIP_residual_adapter_0.3',
+             # 'OpenCLIP_sig_adapter_0.4_nobias',
+             'OpenCLIP_sig_adapter_0.3_32_mp',
+             'OpenCLIP_sig_adapter_0.3_mp',
+             'OpenCLIP_sig_adapter_0.3_1000_mp',]
 
     names = ['openCLIP',
-             'Residual Adapter alpha=0.3',
-             'Sig Adapter alpha=0.4 no bias',
-             'Sig adapter alpha=0.3',]
+             # 'Residual Adapter alpha=0.3',
+             # 'Sig Adapter alpha=0.4 no bias',
+             'Sig Adapter alpha=03 batch=32 positives=5',
+             'Sig Adapter alpha=03 batch=400 positives=5',
+             'Sig Adapter alpha=03 batch=1000 positives=5']
 
     for i, name in enumerate(paths):
         if 'adapter_' in name:
@@ -89,6 +95,6 @@ if __name__ == '__main__':
     plt.legend()
     plt.xlabel('k')
     plt.ylabel('R@k')
-    plt.title('COCO Retrieval with Open CLIP encoders, 5/25000')
+    plt.title(title)
     plt.show()
 
