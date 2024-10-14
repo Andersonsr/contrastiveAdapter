@@ -8,3 +8,9 @@ on the retrieval task. The encoders used were the [openclip](https://arxiv.org/a
 
 ![retrieval results with openclip encoders](./retrievaladapters.png)
 
+
+During image-text evaluation we consider only 1 correct caption in 5000 total captions. The contrastive adapter show comparable performance to the complete fine-tuned COCA model from openclip project.
+
+![retrieval results with coca model from openclip project](./coca.png)
+
+                                                                                                                                                                                                                                                                                
